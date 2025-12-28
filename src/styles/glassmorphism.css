@@ -561,6 +561,7 @@ body {
   text-align: center;
   transition: transform 0.6s;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   border-radius: 16px;
 }
 
@@ -570,6 +571,7 @@ body {
 
 .card-face {
   position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   -webkit-backface-visibility: hidden;
@@ -596,12 +598,23 @@ body {
 
 .card-front {
   background: rgba(255, 255, 255, 0.1);
+  transform: rotateY(0deg);
+  z-index: 2;
 }
 
 .card-back {
   transform: rotateY(180deg);
   background-size: cover;
   background-position: center;
+  z-index: 1;
+}
+
+.team-card.flipped .card-front {
+  z-index: 1;
+}
+
+.team-card.flipped .card-back {
+  z-index: 2;
 }
 
 .card-back-overlay {
@@ -613,6 +626,8 @@ body {
   justify-content: center;
   align-items: center;
   padding: 2rem;
+  /* Ensure overlay content is above the background image */
+  z-index: 1; 
 }
 
 .card-avatar {
@@ -658,7 +673,7 @@ body {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  z-index: 20;
+  z-index: 50; /* Ensure high z-index */
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 50%;
@@ -670,6 +685,7 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.3s ease;
+  pointer-events: auto; /* Ensure clickable */
 }
 
 .card-back .flip-button {

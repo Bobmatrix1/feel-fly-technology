@@ -49,18 +49,19 @@ export const TeamCard = ({ member }: { member: TeamMember }) => {
       <div className={`team-card ${isFlipped ? 'flipped' : ''}`}>
         {/* Front of Card */}
         <div className="card-face card-front" onClick={handleCardClick}>
-          <button
-            className="flip-button"
-            onClick={handleFlip}
-            aria-label="Flip card"
-          >
-            <FiRotateCw />
-          </button>
           <div className="card-avatar">
             <img src={member.avatar} alt={member.name} />
           </div>
           <h3 className="card-name">{member.name}</h3>
           <p className="card-role gradient-text">{member.role}</p>
+          <button
+            className="flip-button"
+            onClick={handleFlip}
+            aria-label="Flip card"
+            style={{ zIndex: 50, transform: 'translateZ(20px)' }}
+          >
+            <FiRotateCw />
+          </button>
         </div>
 
         {/* Back of Card */}
@@ -69,13 +70,6 @@ export const TeamCard = ({ member }: { member: TeamMember }) => {
           onClick={handleCardClick}
           style={{ backgroundImage: `url(${member.avatar})` }}
         >
-          <button
-            className="flip-button"
-            onClick={handleFlip}
-            aria-label="Flip card back"
-          >
-            <FiRotateCw />
-          </button>
           <div className="card-back-overlay">
             <h3 className="card-back-name">{member.name}</h3>
             <p className="card-back-role gradient-text">{member.role}</p>
@@ -119,6 +113,14 @@ export const TeamCard = ({ member }: { member: TeamMember }) => {
               )}
             </div>
           </div>
+          <button
+            className="flip-button"
+            onClick={handleFlip}
+            aria-label="Flip card back"
+            style={{ zIndex: 50, transform: 'translateZ(20px)' }}
+          >
+            <FiRotateCw />
+          </button>
         </div>
       </div>
     </motion.div>
