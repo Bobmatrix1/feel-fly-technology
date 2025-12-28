@@ -378,6 +378,19 @@ body {
   gap: 1rem;
   z-index: 999;
   align-items: center;
+  
+  /* Enhanced Glass Effect for Readability */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+}
+
+.dark .mobile-menu-content {
+  background: rgba(3, 2, 19, 0.95);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
 .mobile-menu-content .nav-link {
