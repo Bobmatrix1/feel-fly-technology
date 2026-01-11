@@ -1,8 +1,7 @@
 
-  # Futuristic Glassmorphism Portfolio
-
-  This is a code bundle for Futuristic Glassmorphism Portfolio. The original project is available at https://www.figma.com/design/Bw7dmB4rPNgNFpTcLfgPFD/Futuristic-Glassmorphism-Portfolio.
-
+  # feel-flytech
+  
+  This is the official project for feel-flytech.
   ## Running the code
 
   Run `npm i` to install the dependencies.
