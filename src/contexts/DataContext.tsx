@@ -125,6 +125,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Seed initial config if not exists
             setDoc(configRef, initialSiteConfig);
           }
+          
+          // CRITICAL: Only set loading to false once we have the first snapshot
+          setLoading(false);
         });
 
         // Team Members Listener
@@ -138,7 +141,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setTeamMembers(membersList as TeamMember[]);
           } else {
             // Only seed if we are sure it's empty AND we are the first to initialize
-            // Note: In production, you might want to handle this differently
             const checkMembers = await getDocs(membersRef);
             if (checkMembers.empty) {
               for (const member of initialTeamMembers) {
@@ -167,8 +169,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         });
-        
-        setLoading(false);
 
       } catch (error) {
         console.error("Error connecting to Firestore:", error);

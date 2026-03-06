@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FiLogOut, 
@@ -16,12 +16,15 @@ import {
   FiGithub,
   FiLinkedin,
   FiInstagram,
-  FiExternalLink
+  FiExternalLink,
+  FiGlobe,
+  FiTwitter
 } from 'react-icons/fi';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../../lib/firebase';
 import { useData } from '../../contexts/DataContext';
 import { doc, getDoc } from 'firebase/firestore';
+import { CropModal } from '../components/ui/CropModal';
 
 const CLOUDINARY_CLOUD_NAME = 'djllkcgzv';
 const CLOUDINARY_UPLOAD_PRESET = 'feel-fly technology';
@@ -32,6 +35,9 @@ export const AdminDashboardPage = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  // Crop state
+  const [cropState, setCropState] = useState<{ src: string, callback: (url: string) => void, id: string } | null>(null);
   
   const { 
     siteConfig, 
@@ -75,7 +81,7 @@ export const AdminDashboardPage = () => {
     );
   }
 
-  const handleImageUpload = async (file: File, callback: (url: string) => void, fieldId: string) => {
+  const handleImageUpload = async (file: File | Blob, callback: (url: string) => void, fieldId: string) => {
     setUploadingField(fieldId);
     const formData = new FormData();
     formData.append('file', file);
@@ -100,6 +106,19 @@ export const AdminDashboardPage = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void, id: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropState({ src: reader.result as string, callback, id });
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
+  };
+
   const ImageUploadInput = ({ label, value, onUpdate, id }: { label: string, value: string, onUpdate: (val: string) => void, id: string }) => (
     <div className="form-group">
       <label>{label}</label>
@@ -111,12 +130,12 @@ export const AdminDashboardPage = () => {
           className="glass-input"
           placeholder="https://..."
         />
-        <label className={`upload-btn glass-button ${uploadingField === id ? 'uploading' : ''}`} title="Upload Image">
+        <label className={`upload-btn glass-button ${uploadingField === id ? 'uploading' : ''}`} title="Upload & Crop">
           {uploadingField === id ? '...' : <FiUpload />}
           <input 
             type="file" 
             accept="image/*" 
-            onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], onUpdate, id)} 
+            onChange={(e) => handleFileSelect(e, onUpdate, id)} 
             hidden 
           />
         </label>
@@ -215,7 +234,12 @@ export const AdminDashboardPage = () => {
       role: 'Team Member',
       bio: 'Bio goes here',
       avatar: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=400&h=400&fit=crop',
-      socials: {},
+      socials: {
+        github: '',
+        linkedin: '',
+        twitter: '',
+        portfolio: ''
+      },
       projects: [],
       gallery: []
     });
@@ -229,6 +253,13 @@ export const AdminDashboardPage = () => {
 
   const updateMember = async (id: string, field: string, value: any) => {
     await contextUpdateMember(id, { [field]: value });
+  };
+
+  const updateMemberSocial = async (memberId: string, platform: string, value: string) => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+    const newSocials = { ...(member.socials || {}), [platform]: value };
+    await updateMember(memberId, 'socials', newSocials);
   };
 
   // Company Project Actions
@@ -421,6 +452,16 @@ export const AdminDashboardPage = () => {
                       <label>Title</label>
                       <input type="text" value={project.title} onChange={(e) => updateProject(project.firestoreId, 'title', e.target.value)} className="glass-input" />
                     </div>
+                    <div className="form-group">
+                      <label>Description</label>
+                      <textarea 
+                        value={project.description} 
+                        onChange={(e) => updateProject(project.firestoreId, 'description', e.target.value)} 
+                        className="glass-input" 
+                        rows={3} 
+                        placeholder="Tell us about this project..."
+                      />
+                    </div>
                     <ImageUploadInput 
                       label="Media URL" 
                       value={project.media} 
@@ -463,37 +504,123 @@ export const AdminDashboardPage = () => {
                       <div className="form-group"><label>Role</label><input type="text" value={member.role} onChange={(e) => updateMember(member.id, 'role', e.target.value)} className="glass-input" /></div>
                     </div>
                     <ImageUploadInput 
-                      label="Avatar URL" 
+                      label="Avatar URL (Circle Crop)" 
                       value={member.avatar} 
                       onUpdate={(url) => updateMember(member.id, 'avatar', url)} 
                       id={`member-avatar-${index}`} 
                     />
+
+                    <div className="form-group">
+                      <label>Bio (Visible on Card Back)</label>
+                      <textarea 
+                        value={member.bio} 
+                        onChange={(e) => updateMember(member.id, 'bio', e.target.value)} 
+                        className="glass-input" 
+                        rows={3}
+                        placeholder="Write a short bio..."
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Social Links</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <FiGithub className="text-white/40" />
+                          <input 
+                            type="url" 
+                            value={member.socials?.github || ''} 
+                            placeholder="GitHub URL"
+                            onChange={(e) => updateMemberSocial(member.id, 'github', e.target.value)}
+                            className="glass-input text-sm" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiLinkedin className="text-white/40" />
+                          <input 
+                            type="url" 
+                            value={member.socials?.linkedin || ''} 
+                            placeholder="LinkedIn URL"
+                            onChange={(e) => updateMemberSocial(member.id, 'linkedin', e.target.value)}
+                            className="glass-input text-sm" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiTwitter className="text-white/40" />
+                          <input 
+                            type="url" 
+                            value={member.socials?.twitter || ''} 
+                            placeholder="Twitter URL"
+                            onChange={(e) => updateMemberSocial(member.id, 'twitter', e.target.value)}
+                            className="glass-input text-sm" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiGlobe className="text-white/40" />
+                          <input 
+                            type="url" 
+                            value={member.socials?.portfolio || ''} 
+                            placeholder="Portfolio URL"
+                            onChange={(e) => updateMemberSocial(member.id, 'portfolio', e.target.value)}
+                            className="glass-input text-sm" 
+                          />
+                        </div>
+                      </div>
+                    </div>
                     
-                    {/* Nested Management for Projects and Gallery */}
                     <div className="nested-management">
-                      <h4>Member Projects</h4>
+                      <h4 className="mb-4">Member Projects</h4>
                       <div className="nested-list">
                         {member.projects?.map((p, pIdx) => (
-                          <div key={pIdx} className="nested-item glass-panel">
-                            <input type="text" value={p.title} placeholder="Project Title" onChange={(e) => {
-                              const newProjects = [...member.projects];
-                              newProjects[pIdx].title = e.target.value;
-                              updateMember(member.id, 'projects', newProjects);
-                            }} className="glass-input" />
-                            <ImageUploadInput 
-                              label="" 
-                              value={p.image} 
-                              onUpdate={(url) => {
-                                const newProjects = [...member.projects];
-                                newProjects[pIdx].image = url;
-                                updateMember(member.id, 'projects', newProjects);
-                              }} 
-                              id={`member-${index}-project-${pIdx}`} 
-                            />
-                            <button className="delete-button" onClick={() => updateMember(member.id, 'projects', member.projects.filter((_, i) => i !== pIdx))}><FiX /></button>
+                          <div key={pIdx} className="nested-item glass-panel !flex flex-col gap-4">
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="flex-1">
+                                <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Project Title</label>
+                                <input type="text" value={p.title} placeholder="e.g. Mobile App" onChange={(e) => {
+                                  const newProjects = [...member.projects];
+                                  newProjects[pIdx].title = e.target.value;
+                                  updateMember(member.id, 'projects', newProjects);
+                                }} className="glass-input !py-2" />
+                              </div>
+                              <button 
+                                className="delete-button flex-shrink-0 mt-5" 
+                                title="Remove Project"
+                                onClick={() => updateMember(member.id, 'projects', member.projects.filter((_, i) => i !== pIdx))}
+                              >
+                                <FiX />
+                              </button>
+                            </div>
+                            
+                            <div className="w-full">
+                              <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Project Details</label>
+                              <textarea 
+                                value={p.description} 
+                                placeholder="Describe the role and outcome..." 
+                                onChange={(e) => {
+                                  const newProjects = [...member.projects];
+                                  newProjects[pIdx].description = e.target.value;
+                                  updateMember(member.id, 'projects', newProjects);
+                                }} 
+                                className="glass-input"
+                                rows={2}
+                              />
+                            </div>
+
+                            <div className="w-full">
+                              <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1 block">Project Image</label>
+                              <ImageUploadInput 
+                                label="" 
+                                value={p.image} 
+                                onUpdate={(url) => {
+                                  const newProjects = [...member.projects];
+                                  newProjects[pIdx].image = url;
+                                  updateMember(member.id, 'projects', newProjects);
+                                }} 
+                                id={`member-${index}-project-${pIdx}`} 
+                              />
+                            </div>
                           </div>
                         ))}
-                        <button className="glass-button add-nested" onClick={() => updateMember(member.id, 'projects', [...(member.projects || []), { title: 'New Project', description: '', image: '', link: '' }])}><FiPlus /> Add Project</button>
+                        <button className="glass-button w-full mt-2" onClick={() => updateMember(member.id, 'projects', [...(member.projects || []), { title: 'New Project', description: '', image: '', link: '' }])}><FiPlus /> Add Project</button>
                       </div>
 
                       <h4>Gallery Images</h4>
@@ -509,11 +636,20 @@ export const AdminDashboardPage = () => {
                           <input type="file" multiple accept="image/*" onChange={(e) => {
                             if (e.target.files) {
                               Array.from(e.target.files).forEach(file => {
-                                handleImageUpload(file, (url) => {
-                                  updateMember(member.id, 'gallery', [...(member.gallery || []), url]);
-                                }, `gallery-${member.id}`);
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setCropState({ 
+                                    src: reader.result as string, 
+                                    callback: (url) => {
+                                      updateMember(member.id, 'gallery', [...(member.gallery || []), url]);
+                                    }, 
+                                    id: `gallery-${member.id}` 
+                                  });
+                                };
+                                reader.readAsDataURL(file);
                               });
                             }
+                            e.target.value = '';
                           }} hidden />
                         </label>
                       </div>
@@ -525,6 +661,20 @@ export const AdminDashboardPage = () => {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {cropState && (
+          <CropModal 
+            image={cropState.src}
+            onCropComplete={(blob) => {
+              handleImageUpload(blob, cropState.callback, cropState.id);
+              setCropState(null);
+            }}
+            onCancel={() => setCropState(null)}
+            circular={cropState.id.includes('avatar') || cropState.id.includes('gallery')}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
