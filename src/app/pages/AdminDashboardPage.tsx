@@ -443,7 +443,15 @@ export const AdminDashboardPage = () => {
               {projects.map((project: any, index) => (
                 <div key={project.firestoreId || index} className="member-edit-card glass-panel">
                   <div className="member-edit-header">
-                    <img src={project.media} className="member-avatar-small" />
+                    <label className="cursor-pointer hover:opacity-80 transition-opacity" title="Click to change image">
+                      <img src={project.media} className="member-avatar-small" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileSelect(e, (url) => updateProject(project.firestoreId, 'media', url), `project-media-${index}`)} 
+                        hidden 
+                      />
+                    </label>
                     <h3>{project.title}</h3>
                     <button onClick={() => removeProject(project.firestoreId)} className="delete-button"><FiTrash /></button>
                   </div>
@@ -494,7 +502,15 @@ export const AdminDashboardPage = () => {
               {members.map((member, index) => (
                 <div key={member.id} className="member-edit-card glass-panel">
                   <div className="member-edit-header">
-                    <img src={member.avatar} alt={member.name} className="member-avatar-small" />
+                    <label className="cursor-pointer hover:opacity-80 transition-opacity" title="Click to change avatar">
+                      <img src={member.avatar} alt={member.name} className="member-avatar-small" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileSelect(e, (url) => updateMember(member.id, 'avatar', url), `member-avatar-${index}`)} 
+                        hidden 
+                      />
+                    </label>
                     <h3>{member.name}</h3>
                     <button onClick={() => removeMember(member.id)} className="delete-button"><FiTrash /></button>
                   </div>

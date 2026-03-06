@@ -25,16 +25,16 @@ export const ParticleBackground = () => {
             value: 'transparent',
           },
         },
-        fpsLimit: 120,
+        fpsLimit: 60,
         particles: {
           color: {
             value: theme === 'dark' ? '#00BCD4' : '#FF6BCB',
           },
           links: {
             color: theme === 'dark' ? '#00BCD4' : '#FF6BCB',
-            distance: 150,
+            distance: 120,
             enable: true,
-            opacity: 0.3,
+            opacity: 0.2,
             width: 1,
           },
           move: {
@@ -44,27 +44,43 @@ export const ParticleBackground = () => {
               default: 'bounce',
             },
             random: false,
-            speed: 1,
+            speed: 0.8,
             straight: false,
           },
           number: {
             density: {
               enable: true,
-              area: 800,
+              area: 1200,
             },
-            value: 80,
+            value: 40, // Reduced for performance
           },
           opacity: {
-            value: 0.5,
+            value: 0.3,
           },
           shape: {
             type: 'circle',
           },
           size: {
-            value: { min: 1, max: 3 },
+            value: { min: 1, max: 2 },
           },
         },
-        detectRetina: true,
+        interactivity: {
+          events: {
+            onHover: {
+              enable: true,
+              mode: "grab",
+            },
+          },
+          modes: {
+            grab: {
+              distance: 140,
+              links: {
+                opacity: 0.5
+              }
+            }
+          }
+        },
+        detectRetina: false, // Set to false for mobile speed
       }}
     />
   );

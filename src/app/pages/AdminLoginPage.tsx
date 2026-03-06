@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiUserPlus, FiLogIn } from 'react-icons/fi';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { FiMail, FiLock, FiUserPlus, FiLogIn, FiEye, FiEyeOff } from 'react-icons/fi';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 
@@ -10,14 +10,17 @@ export const AdminLoginPage = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       let user;
@@ -52,13 +55,32 @@ export const AdminLoginPage = () => {
       console.error('Auth error:', err);
       if (err.code === 'auth/email-already-in-use') {
         setError('Email already in use. Please login instead.');
-      } else if (err.code === 'auth/wrong-password') {
-        setError('Invalid password.');
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
       } else if (err.code === 'auth/user-not-found') {
         setError('No account found with this email.');
       } else {
         setError(err.message || 'Authentication failed.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address to reset your password.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess('password reset link sent to your email! , click on the reset link to reset your password , check spam folder if you don’t find the link');
+    } catch (err: any) {
+      console.error('Reset error:', err);
+      setError('Failed to send reset email. Make sure the email is correct.');
     } finally {
       setLoading(false);
     }
@@ -95,9 +117,19 @@ export const AdminLoginPage = () => {
               </motion.div>
             )}
 
+            {success && (
+              <motion.div
+                className="bg-green-500/10 border border-green-500/30 text-green-500 p-4 rounded-lg text-sm text-center mb-4 leading-relaxed"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {success}
+              </motion.div>
+            )}
+
             <div className="form-group">
-              <label htmlFor="email">
-                <FiMail /> Email
+              <label htmlFor="email" className="flex items-center gap-2">
+                <FiMail className="flex-shrink-0" /> <span>Email</span>
               </label>
               <input
                 type="email"
@@ -110,21 +142,43 @@ export const AdminLoginPage = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="password">
-                <FiLock /> Password
+            <div className="form-group relative">
+              <label htmlFor="password" className="flex items-center gap-2">
+                <FiLock className="flex-shrink-0" /> <span>Password</span>
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                required
-                minLength={6}
-                className="glass-input"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                  minLength={6}
+                  className="glass-input pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="password-toggle-btn"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FiEye /> : <FiEyeOff />}
+                </button>
+              </div>
             </div>
+
+            {!isRegistering && (
+              <div className="text-right -mt-2">
+                <button 
+                  type="button" 
+                  onClick={handleResetPassword}
+                  className="text-xs text-[var(--accent-cyan)] hover:underline opacity-80"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -140,6 +194,7 @@ export const AdminLoginPage = () => {
               onClick={() => {
                 setIsRegistering(!isRegistering);
                 setError('');
+                setSuccess('');
               }} 
               className="auth-toggle"
             >
