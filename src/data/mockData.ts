@@ -5,17 +5,17 @@ export const siteConfig = {
   title: "Feel-Fly Technology",
   mission: "To deliver high-quality technology services that solve real-world problems, improve operational efficiency, and enable sustainable digital growth for our clients.",
   about: "Feel-Fly Technology is a forward-thinking tech enterprise that delivers end-to-end digital solutions across software development, automation, design, and emerging technologies. We combine technical expertise, creativity, and business understanding to build solutions that are practical, secure, and growth-oriented.",
-  contact: {
-    email: "info@feel-flytechnology.com",
-    phone: "+234 XXX XXX XXXX",
-    address: "Nigeria"
-  },
-  social: {
-    github: "https://github.com",
-    linkedin: "https://linkedin.com/company/feel-fly-technology",
-    twitter: "https://twitter.com/FeelFlyTech",
-    instagram: "https://instagram.com/feel.flytechnology"
-  },
+  contact: [
+    { id: '1', label: 'Email', value: 'info@feel-flytechnology.com', type: 'email' as const },
+    { id: '2', label: 'Phone', value: '+234 XXX XXX XXXX', type: 'phone' as const },
+    { id: '3', label: 'Address', value: 'Nigeria', type: 'address' as const }
+  ],
+  social: [
+    { id: '1', label: 'GitHub', url: 'https://github.com' },
+    { id: '2', label: 'LinkedIn', url: 'https://linkedin.com/company/feel-fly-technology' },
+    { id: '3', label: 'Twitter', url: 'https://twitter.com/FeelFlyTech' },
+    { id: '4', label: 'Instagram', url: 'https://instagram.com/feel.flytechnology' }
+  ],
   logo: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=200&h=200&fit=crop",
   theme: "dark",
   splash: {

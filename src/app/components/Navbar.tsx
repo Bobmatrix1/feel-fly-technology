@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { FiSun, FiMoon, FiHome, FiUsers, FiInfo, FiBriefcase, FiLogIn, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
+import { FiSun, FiMoon, FiHome, FiUsers, FiInfo, FiBriefcase, FiLogIn, FiLogOut, FiMenu, FiX, FiSettings } from 'react-icons/fi';
 import { useTheme } from '../../contexts/ThemeContext';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { useIsMobile } from './ui/use-mobile';
 
 export const Navbar = () => {
@@ -12,12 +13,24 @@ export const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Check if user is admin
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists() && userDoc.data().isAdmin) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -86,6 +99,17 @@ export const Navbar = () => {
         <FiUsers />
         <span>Team</span>
       </button>
+
+      {isAdmin && (
+        <Link
+          to="/admin/dashboard"
+          className={`nav-link ${isActive('/admin/dashboard') ? 'active' : ''}`}
+          onClick={() => setIsMenuOpen(false)}
+        >
+          <FiSettings />
+          <span>Admin</span>
+        </Link>
+      )}
 
       {user ? (
         <button

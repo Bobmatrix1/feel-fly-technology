@@ -18,9 +18,34 @@ import {
 } from '../data/mockData';
 
 // Define types
-export type SiteConfig = typeof initialSiteConfig;
-export type TeamMember = typeof initialTeamMembers[0];
-export type Project = typeof initialCompanyProjects[0];
+export interface ContactItem {
+  id: string;
+  label: string;
+  value: string;
+  type: 'email' | 'phone' | 'address' | 'url';
+}
+
+export interface SocialItem {
+  id: string;
+  label: string;
+  url: string;
+  icon?: string;
+}
+
+export interface SiteConfig {
+  title: string;
+  mission: string;
+  about: string;
+  logo: string;
+  theme: string;
+  contact: ContactItem[];
+  social: SocialItem[];
+  splash: {
+    image: string;
+    title: string;
+    tagline: string;
+  };
+}
 
 interface DataContextType {
   siteConfig: SiteConfig;
@@ -37,6 +62,21 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+
+// Helper for mapping strings to icons
+export const getIcon = (iconName: string = '') => {
+  const name = iconName.toLowerCase();
+  if (name.includes('mail') || name.includes('email')) return 'FiMail';
+  if (name.includes('phone') || name.includes('whatsapp') || name.includes('call')) return 'FiPhone';
+  if (name.includes('map') || name.includes('pin') || name.includes('address') || name.includes('location')) return 'FiMapPin';
+  if (name.includes('github')) return 'FiGithub';
+  if (name.includes('linkedin')) return 'FiLinkedin';
+  if (name.includes('twitter') || name.includes(' x')) return 'RiTwitterXLine';
+  if (name.includes('instagram')) return 'FiInstagram';
+  if (name.includes('facebook')) return 'FiFacebook';
+  if (name.includes('youtube')) return 'FiYoutube';
+  return 'FiExternalLink';
+};
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(initialSiteConfig);
@@ -56,7 +96,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const configRef = doc(db, 'settings', 'siteConfig');
         unsubscribeConfig = onSnapshot(configRef, (docSnap) => {
           if (docSnap.exists()) {
-            setSiteConfig(docSnap.data() as SiteConfig);
+            const data = docSnap.data();
+            
+            // Handle legacy structure conversion if necessary
+            const processedData = { ...data };
+            
+            if (data.contact && !Array.isArray(data.contact)) {
+              processedData.contact = [
+                { id: '1', label: 'Email', value: data.contact.email || '', type: 'email' },
+                { id: '2', label: 'Phone', value: data.contact.phone || '', type: 'phone' },
+                { id: '3', label: 'Address', value: data.contact.address || '', type: 'address' }
+              ];
+            }
+            
+            if (data.social && !Array.isArray(data.social)) {
+              processedData.social = Object.entries(data.social)
+                .filter(([_, value]) => !!value)
+                .map(([key, value], index) => ({
+                  id: String(index + 1),
+                  label: key.charAt(0).toUpperCase() + key.slice(1),
+                  url: value as string
+                }));
+            }
+
+            // Deep merge with initial config to ensure all fields exist
+            setSiteConfig(prev => ({ ...prev, ...processedData }));
           } else {
             // Seed initial config if not exists
             setDoc(configRef, initialSiteConfig);
@@ -72,11 +136,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: doc.id
             }));
             setTeamMembers(membersList as TeamMember[]);
-          } else if (!loading) {
-            // Auto-seed if empty
-            for (const member of initialTeamMembers) {
-              const { id, ...data } = member;
-              await addDoc(membersRef, data);
+          } else {
+            // Only seed if we are sure it's empty AND we are the first to initialize
+            // Note: In production, you might want to handle this differently
+            const checkMembers = await getDocs(membersRef);
+            if (checkMembers.empty) {
+              for (const member of initialTeamMembers) {
+                const { id, ...data } = member;
+                await addDoc(membersRef, data);
+              }
             }
           }
         });
@@ -86,14 +154,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribeProjects = onSnapshot(projectsRef, async (snapshot) => {
           if (!snapshot.empty) {
             const projectsList = snapshot.docs.map(doc => ({
-              ...doc.data(),
+              ...(doc.data() as any),
               firestoreId: doc.id
             }));
             setCompanyProjects(projectsList as any[]);
-          } else if (!loading) {
-            // Auto-seed if empty
-            for (const project of initialCompanyProjects) {
-              await addDoc(projectsRef, project);
+          } else {
+            const checkProjects = await getDocs(projectsRef);
+            if (checkProjects.empty) {
+              for (const project of initialCompanyProjects) {
+                await addDoc(projectsRef, project);
+              }
             }
           }
         });
@@ -102,7 +172,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       } catch (error) {
         console.error("Error connecting to Firestore:", error);
-        // Fallback to mock data is automatic since we initialized state with it
         setLoading(false);
       }
     };

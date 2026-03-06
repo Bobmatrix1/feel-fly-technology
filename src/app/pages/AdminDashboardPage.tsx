@@ -1,10 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { FiLogOut, FiPlus, FiTrash, FiSave, FiImage, FiUpload, FiX, FiLink } from 'react-icons/fi';
+import { 
+  FiLogOut, 
+  FiPlus, 
+  FiTrash, 
+  FiSave, 
+  FiImage, 
+  FiUpload, 
+  FiX, 
+  FiLink,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiGithub,
+  FiLinkedin,
+  FiInstagram,
+  FiExternalLink
+} from 'react-icons/fi';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { useData } from '../../contexts/DataContext';
+import { doc, getDoc } from 'firebase/firestore';
 
 const CLOUDINARY_CLOUD_NAME = 'djllkcgzv';
 const CLOUDINARY_UPLOAD_PRESET = 'feel-fly technology';
@@ -14,6 +31,7 @@ export const AdminDashboardPage = () => {
   const [activeTab, setActiveTab] = useState<'site' | 'team' | 'projects'>('site');
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   
   const { 
     siteConfig, 
@@ -29,13 +47,33 @@ export const AdminDashboardPage = () => {
   } = useData();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         navigate('/admin');
+      } else {
+        // Double check admin status
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (!userDoc.exists() || !userDoc.data().isAdmin) {
+            navigate('/');
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          navigate('/admin');
+        }
       }
+      setCheckingAuth(false);
     });
     return () => unsubscribe();
   }, [navigate]);
+
+  if (checkingAuth) {
+    return (
+      <div className="page-container flex items-center justify-center">
+        <div className="text-xl gradient-text animate-pulse">Verifying Admin Status...</div>
+      </div>
+    );
+  }
 
   const handleImageUpload = async (file: File, callback: (url: string) => void, fieldId: string) => {
     setUploadingField(fieldId);
@@ -105,12 +143,68 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      alert('All changes are synced to Firebase!');
-    }, 500);
+  // Site Settings change handler with immediate update
+  const handleSiteConfigChange = async (updates: any) => {
+    const updatedConfig = { ...siteConfig, ...updates };
+    await updateSiteConfig(updatedConfig);
+  };
+
+  // Contact/Social Management
+  const addContactItem = () => {
+    const newContact = [...(siteConfig.contact || []), { 
+      id: Date.now().toString(), 
+      label: 'New Contact', 
+      value: '', 
+      type: 'url' as const 
+    }];
+    handleSiteConfigChange({ contact: newContact });
+  };
+
+  const removeContactItem = (id: string) => {
+    const newContact = siteConfig.contact.filter(item => item.id !== id);
+    handleSiteConfigChange({ contact: newContact });
+  };
+
+  const updateContactItem = (id: string, updates: any) => {
+    const newContact = siteConfig.contact.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    );
+    handleSiteConfigChange({ contact: newContact });
+  };
+
+  const addSocialItem = () => {
+    const newSocial = [...(siteConfig.social || []), { 
+      id: Date.now().toString(), 
+      label: 'New Social', 
+      url: '' 
+    }];
+    handleSiteConfigChange({ social: newSocial });
+  };
+
+  const removeSocialItem = (id: string) => {
+    const newSocial = siteConfig.social.filter(item => item.id !== id);
+    handleSiteConfigChange({ social: newSocial });
+  };
+
+  const updateSocialItem = (id: string, updates: any) => {
+    const newSocial = siteConfig.social.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    );
+    handleSiteConfigChange({ social: newSocial });
+  };
+
+  const addWhatsApp = () => {
+    const hasWhatsApp = siteConfig.social?.some(s => s.label.toLowerCase().includes('whatsapp'));
+    if (hasWhatsApp) {
+      alert('WhatsApp already exists!');
+      return;
+    }
+    const newSocial = [...(siteConfig.social || []), { 
+      id: Date.now().toString(), 
+      label: 'WhatsApp', 
+      url: 'https://wa.me/YOUR_NUMBER' 
+    }];
+    handleSiteConfigChange({ social: newSocial });
   };
 
   // Team Member Actions
@@ -168,9 +262,10 @@ export const AdminDashboardPage = () => {
       >
         <h1>Admin Dashboard</h1>
         <div className="header-actions">
-          <button onClick={handleSave} disabled={saving} className="save-button glass-button">
-            <FiSave /> {saving ? 'Saving...' : 'Synced'}
-          </button>
+          <div className="status-badge glass-panel px-4 py-2 text-xs flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            Real-time Sync
+          </div>
           <button onClick={handleLogout} className="logout-button glass-button">
             <FiLogOut /> Logout
           </button>
@@ -187,29 +282,39 @@ export const AdminDashboardPage = () => {
         {/* Site Settings */}
         {activeTab === 'site' && (
           <motion.div className="config-section glass-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <h2>Global Configuration</h2>
+            <h2 className="mb-6">Global Configuration</h2>
             <div className="form-group">
               <label>Site Title</label>
-              <input type="text" value={siteConfig.title} onChange={(e) => updateSiteConfig({ ...siteConfig, title: e.target.value })} className="glass-input" />
+              <input 
+                type="text" 
+                value={siteConfig.title} 
+                onChange={(e) => handleSiteConfigChange({ title: e.target.value })} 
+                className="glass-input" 
+              />
             </div>
             <div className="form-group">
               <label>Mission</label>
-              <textarea value={siteConfig.mission} onChange={(e) => updateSiteConfig({ ...siteConfig, mission: e.target.value })} className="glass-input" rows={2} />
+              <textarea 
+                value={siteConfig.mission} 
+                onChange={(e) => handleSiteConfigChange({ mission: e.target.value })} 
+                className="glass-input" 
+                rows={2} 
+              />
             </div>
             <ImageUploadInput 
               label="Main Site Logo" 
               value={siteConfig.logo} 
-              onUpdate={(url) => updateSiteConfig({ ...siteConfig, logo: url })} 
+              onUpdate={(url) => handleSiteConfigChange({ logo: url })} 
               id="site-logo" 
             />
 
-            <h3 className="subsection-title">Splash Screen</h3>
+            <h3 className="subsection-title mt-8">Splash Screen</h3>
             <div className="form-group">
               <label>Splash Title</label>
               <input
                 type="text"
                 value={siteConfig.splash?.title || ''}
-                onChange={(e) => updateSiteConfig({ ...siteConfig, splash: { ...siteConfig.splash, title: e.target.value } })}
+                onChange={(e) => handleSiteConfigChange({ splash: { ...siteConfig.splash, title: e.target.value } })}
                 className="glass-input"
                 placeholder="Enter splash title"
               />
@@ -219,7 +324,7 @@ export const AdminDashboardPage = () => {
               <input
                 type="text"
                 value={siteConfig.splash?.tagline || ''}
-                onChange={(e) => updateSiteConfig({ ...siteConfig, splash: { ...siteConfig.splash, tagline: e.target.value } })}
+                onChange={(e) => handleSiteConfigChange({ splash: { ...siteConfig.splash, tagline: e.target.value } })}
                 className="glass-input"
                 placeholder="Enter splash tagline"
               />
@@ -227,18 +332,71 @@ export const AdminDashboardPage = () => {
             <ImageUploadInput 
               label="Splash Image URL" 
               value={siteConfig.splash?.image || ''} 
-              onUpdate={(url) => updateSiteConfig({ ...siteConfig, splash: { ...siteConfig.splash, image: url } })} 
+              onUpdate={(url) => handleSiteConfigChange({ splash: { ...siteConfig.splash, image: url } })} 
               id="splash-image" 
             />
 
-            <h3 className="subsection-title">Contact & Social</h3>
-            <div className="form-row">
-              <div className="form-group"><label>Email</label><input type="email" value={siteConfig.contact.email} onChange={(e) => updateSiteConfig({ ...siteConfig, contact: { ...siteConfig.contact, email: e.target.value } })} className="glass-input" /></div>
-              <div className="form-group"><label>Phone</label><input type="text" value={siteConfig.contact.phone} onChange={(e) => updateSiteConfig({ ...siteConfig, contact: { ...siteConfig.contact, phone: e.target.value } })} className="glass-input" /></div>
+            <h3 className="subsection-title mt-8">Contact Information</h3>
+            <div className="nested-list mb-4">
+              {Array.isArray(siteConfig.contact) && siteConfig.contact.map((item) => (
+                <div key={item.id} className="nested-item glass-panel !grid-cols-1 md:!grid-cols-[1fr_2fr_1fr_auto] gap-4">
+                  <input 
+                    type="text" 
+                    value={item.label} 
+                    placeholder="Label (e.g. Email)"
+                    onChange={(e) => updateContactItem(item.id, { label: e.target.value })}
+                    className="glass-input" 
+                  />
+                  <input 
+                    type="text" 
+                    value={item.value} 
+                    placeholder="Value (e.g. info@fly.com)"
+                    onChange={(e) => updateContactItem(item.id, { value: e.target.value })}
+                    className="glass-input" 
+                  />
+                  <select 
+                    value={item.type}
+                    onChange={(e) => updateContactItem(item.id, { type: e.target.value })}
+                    className="glass-input"
+                  >
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
+                    <option value="address">Address</option>
+                    <option value="url">URL/Link</option>
+                  </select>
+                  <button onClick={() => removeContactItem(item.id)} className="delete-button !m-0 flex-shrink-0"><FiTrash /></button>
+                </div>
+              ))}
+              <button onClick={addContactItem} className="glass-button w-full mt-2"><FiPlus /> Add Contact Option</button>
             </div>
-            <div className="form-row">
-              <div className="form-group"><label>GitHub</label><input type="url" value={siteConfig.social.github} onChange={(e) => updateSiteConfig({ ...siteConfig, social: { ...siteConfig.social, github: e.target.value } })} className="glass-input" /></div>
-              <div className="form-group"><label>LinkedIn</label><input type="url" value={siteConfig.social.linkedin} onChange={(e) => updateSiteConfig({ ...siteConfig, social: { ...siteConfig.social, linkedin: e.target.value } })} className="glass-input" /></div>
+
+            <h3 className="subsection-title mt-8 flex justify-between items-center">
+              Social Links
+              <button onClick={addWhatsApp} className="text-xs glass-button !py-1 !px-3 flex items-center gap-1 flex-shrink-0">
+                <FiPlus /> Add WhatsApp
+              </button>
+            </h3>
+            <div className="nested-list">
+              {Array.isArray(siteConfig.social) && siteConfig.social.map((item) => (
+                <div key={item.id} className="nested-item glass-panel !grid-cols-1 md:!grid-cols-[1fr_2fr_auto] gap-4">
+                  <input 
+                    type="text" 
+                    value={item.label} 
+                    placeholder="Platform (e.g. GitHub)"
+                    onChange={(e) => updateSocialItem(item.id, { label: e.target.value })}
+                    className="glass-input" 
+                  />
+                  <input 
+                    type="url" 
+                    value={item.url} 
+                    placeholder="URL (https://...)"
+                    onChange={(e) => updateSocialItem(item.id, { url: e.target.value })}
+                    className="glass-input" 
+                  />
+                  <button onClick={() => removeSocialItem(item.id)} className="delete-button !m-0 flex-shrink-0"><FiTrash /></button>
+                </div>
+              ))}
+              <button onClick={addSocialItem} className="glass-button w-full mt-2"><FiPlus /> Add Social Platform</button>
             </div>
           </motion.div>
         )}

@@ -1,7 +1,35 @@
 import { motion } from 'motion/react';
-import { FiMail, FiMapPin, FiGithub, FiLinkedin, FiInstagram } from 'react-icons/fi';
+import { 
+  FiMail, 
+  FiMapPin, 
+  FiGithub, 
+  FiLinkedin, 
+  FiInstagram, 
+  FiPhone, 
+  FiFacebook, 
+  FiYoutube,
+  FiExternalLink
+} from 'react-icons/fi';
 import { RiTwitterXLine } from 'react-icons/ri';
-import { useData } from '../../contexts/DataContext';
+import { useData, getIcon } from '../../contexts/DataContext';
+
+const IconMap: Record<string, any> = {
+  FiMail,
+  FiMapPin,
+  FiGithub,
+  FiLinkedin,
+  FiInstagram,
+  FiPhone,
+  FiFacebook,
+  FiYoutube,
+  RiTwitterXLine,
+  FiExternalLink
+};
+
+const DynamicIcon = ({ name }: { name: string }) => {
+  const IconComponent = IconMap[name] || FiExternalLink;
+  return <IconComponent />;
+};
 
 export const Footer = () => {
   const { siteConfig } = useData();
@@ -72,39 +100,26 @@ export const Footer = () => {
           <div className="footer-column">
             <h4 className="footer-subtitle">Contact</h4>
             <div className="footer-contact">
-              <div className="footer-contact-item">
-                <FiMail />
-                <a href={`mailto:${siteConfig.contact.email}`}>
-                  {siteConfig.contact.email}
-                </a>
-              </div>
-              <div className="footer-contact-item">
-                <FiMapPin />
-                <span>{siteConfig.contact.address}</span>
-              </div>
+              {Array.isArray(siteConfig.contact) && siteConfig.contact.map((item) => (
+                <div key={item.id} className="footer-contact-item">
+                  <DynamicIcon name={getIcon(item.label)} />
+                  {item.type === 'email' ? (
+                    <a href={`mailto:${item.value}`}>{item.value}</a>
+                  ) : item.type === 'phone' ? (
+                    <a href={`tel:${item.value}`}>{item.value}</a>
+                  ) : (
+                    <span>{item.value}</span>
+                  )}
+                </div>
+              ))}
             </div>
             
             <div className="footer-socials">
-              {siteConfig.social.github && (
-                <a href={siteConfig.social.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-                  <FiGithub />
+              {Array.isArray(siteConfig.social) && siteConfig.social.map((item) => (
+                <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" aria-label={item.label}>
+                  <DynamicIcon name={getIcon(item.label)} />
                 </a>
-              )}
-              {siteConfig.social.linkedin && (
-                <a href={siteConfig.social.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-                  <FiLinkedin />
-                </a>
-              )}
-              {siteConfig.social.twitter && (
-                <a href={siteConfig.social.twitter} target="_blank" rel="noopener noreferrer" aria-label="X">
-                  <RiTwitterXLine />
-                </a>
-              )}
-              {siteConfig.social.instagram && (
-                <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <FiInstagram />
-                </a>
-              )}
+              ))}
             </div>
           </div>
         </div>

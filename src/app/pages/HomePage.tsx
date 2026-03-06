@@ -1,12 +1,46 @@
 import { motion } from 'motion/react';
 import { TeamCard } from '../components/TeamCard';
 import { Footer } from '../components/Footer';
-import { useData } from '../../contexts/DataContext';
-import { FiMail, FiMapPin, FiGithub, FiLinkedin, FiInstagram, FiExternalLink } from 'react-icons/fi';
+import { useData, getIcon } from '../../contexts/DataContext';
+import { 
+  FiMail, 
+  FiMapPin, 
+  FiGithub, 
+  FiLinkedin, 
+  FiInstagram, 
+  FiExternalLink, 
+  FiPhone, 
+  FiFacebook, 
+  FiYoutube 
+} from 'react-icons/fi';
 import { RiTwitterXLine } from 'react-icons/ri';
+
+const IconMap: Record<string, any> = {
+  FiMail,
+  FiMapPin,
+  FiGithub,
+  FiLinkedin,
+  FiInstagram,
+  FiExternalLink,
+  FiPhone,
+  FiFacebook,
+  FiYoutube,
+  RiTwitterXLine
+};
+
+const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
+  const IconComponent = IconMap[name] || FiExternalLink;
+  return <IconComponent className={className} />;
+};
 
 export const HomePage = () => {
   const { siteConfig, teamMembers, companyProjects } = useData();
+
+  const renderContactValue = (item: any) => {
+    if (item.type === 'email') return <a href={`mailto:${item.value}`}>{item.value}</a>;
+    if (item.type === 'phone') return <a href={`tel:${item.value}`}>{item.value}</a>;
+    return <span>{item.value}</span>;
+  };
 
   return (
     <div className="page-container">
@@ -195,39 +229,20 @@ export const HomePage = () => {
         <div className="section-container glass-panel">
           <h2 className="section-title">Get In Touch</h2>
           <div className="contact-info">
-            <div className="contact-item">
-              <FiMail className="contact-icon" />
-              <a href={`mailto:${siteConfig.contact.email}`}>
-                {siteConfig.contact.email}
-              </a>
-            </div>
-            <div className="contact-item">
-              <FiMapPin className="contact-icon" />
-              <span>{siteConfig.contact.address}</span>
-            </div>
+            {Array.isArray(siteConfig.contact) && siteConfig.contact.map((item) => (
+              <div key={item.id} className="contact-item">
+                <DynamicIcon name={getIcon(item.label)} className="contact-icon" />
+                {renderContactValue(item)}
+              </div>
+            ))}
           </div>
 
           <div className="social-links">
-            {siteConfig.social.github && (
-              <a href={siteConfig.social.github} target="_blank" rel="noopener noreferrer">
-                <FiGithub /> GitHub
+            {Array.isArray(siteConfig.social) && siteConfig.social.map((item) => (
+              <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer">
+                <DynamicIcon name={getIcon(item.label)} /> {item.label}
               </a>
-            )}
-            {siteConfig.social.linkedin && (
-              <a href={siteConfig.social.linkedin} target="_blank" rel="noopener noreferrer">
-                <FiLinkedin /> LinkedIn
-              </a>
-            )}
-            {siteConfig.social.twitter && (
-              <a href={siteConfig.social.twitter} target="_blank" rel="noopener noreferrer">
-                <RiTwitterXLine />
-              </a>
-            )}
-            {siteConfig.social.instagram && (
-              <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer">
-                <FiInstagram /> Instagram
-              </a>
-            )}
+            ))}
           </div>
         </div>
       </motion.section>
