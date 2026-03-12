@@ -42,7 +42,7 @@ section {
   padding-top: 120px; /* Increased offset for fixed navbar */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .page-container {
     padding-top: 100px;
   }
@@ -57,7 +57,7 @@ section {
   position: relative;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .hero-section {
     padding: 1rem;
     min-height: calc(100vh - 100px);
@@ -74,7 +74,7 @@ section {
   border-radius: 24px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .hero-content {
     padding: 1.5rem;
     border-radius: 16px;
@@ -113,7 +113,7 @@ body {
   margin-bottom: 1rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .hero-subtitle {
     font-size: 1.2rem;
   }
@@ -128,7 +128,7 @@ body {
   margin-right: auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .hero-mission {
     font-size: 1rem;
   }
@@ -168,7 +168,7 @@ body {
   padding: 1rem 3rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .cta-button {
     font-size: 1.1rem;
     padding: 0.8rem 2rem;
@@ -181,7 +181,7 @@ body {
   padding: 4rem 2rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .section-container {
     padding: 3rem 1rem;
   }
@@ -195,7 +195,7 @@ body {
   color: var(--text-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .section-title {
     font-size: 2rem;
   }
@@ -208,7 +208,7 @@ body {
   margin-bottom: 3rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .section-subtitle {
     font-size: 1.1rem;
     margin-bottom: 2rem;
@@ -230,7 +230,7 @@ body {
   gap: 2rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .services-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -290,7 +290,7 @@ body {
   transition: all 0.3s ease;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .navbar {
     padding: 0.8rem 1rem;
     margin: 0.5rem;
@@ -315,7 +315,7 @@ body {
   color: var(--text-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .navbar-logo {
     font-size: 1.2rem;
   }
@@ -327,7 +327,7 @@ body {
   gap: 1.5rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .navbar-links {
     gap: 0.8rem;
   }
@@ -355,7 +355,7 @@ body {
   padding: 0.5rem 1rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .nav-button {
     padding: 0.5rem;
   }
@@ -382,7 +382,7 @@ body {
   padding: 0.5rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .mobile-menu-toggle {
     display: flex;
     align-items: center;
@@ -436,7 +436,7 @@ body {
   margin-top: 2rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .portfolio-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -618,7 +618,7 @@ body {
   padding: 2rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .card-face {
     padding: 1rem;
   }
@@ -888,7 +888,7 @@ body {
   align-items: center;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .profile-header {
     flex-direction: row;
     text-align: left;
@@ -1098,7 +1098,7 @@ body {
   margin: 0 auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .admin-dashboard {
     padding: 100px 1rem 2rem;
   }
@@ -1113,7 +1113,7 @@ body {
   gap: 1rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .dashboard-header {
     flex-direction: column;
     text-align: center;
@@ -1150,7 +1150,7 @@ body {
   flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .dashboard-tabs {
     gap: 0.5rem;
   }
@@ -1168,7 +1168,7 @@ body {
   margin-bottom: 2rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .config-section, .member-edit-card {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
@@ -1224,7 +1224,7 @@ select.glass-input {
   gap: 1.5rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .form-row {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -1369,7 +1369,7 @@ select.glass-input {
   align-items: center;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .nested-item {
     grid-template-columns: 1fr;
     padding: 1.25rem;
@@ -1443,7 +1443,7 @@ select.glass-input {
   width: 100%;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .subsection-title {
     flex-direction: column;
     align-items: flex-start;
@@ -1621,7 +1621,7 @@ select.glass-input {
   box-shadow: 0 0 10px var(--accent-cyan);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .splash-tagline {
     font-size: 0.8rem;
     letter-spacing: 0.3em;

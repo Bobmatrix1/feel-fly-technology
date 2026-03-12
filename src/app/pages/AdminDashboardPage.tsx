@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -29,6 +29,21 @@ import { CropModal } from '../components/ui/CropModal';
 const CLOUDINARY_CLOUD_NAME = 'djllkcgzv';
 const CLOUDINARY_UPLOAD_PRESET = 'feel-fly technology';
 
+// Debounce helper
+function useDebounce(callback: Function, delay: number) {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  return useCallback((...args: any[]) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+}
+
 export const AdminDashboardPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'site' | 'team' | 'projects'>('site');
@@ -51,6 +66,49 @@ export const AdminDashboardPage = () => {
     updateProject: contextUpdateProject,
     removeProject: contextRemoveProject
   } = useData();
+
+  // Local state for all inputs to prevent cursor jumping
+  const [localSiteConfig, setLocalSiteConfig] = useState(siteConfig);
+  const [localMembers, setLocalMembers] = useState(members);
+  const [localProjects, setLocalProjects] = useState(projects);
+
+  // Update local state when context changes (e.g. initial load or sync from other source)
+  // But ONLY if we aren't currently editing (to avoid overwriting user input)
+  const isEditingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      setLocalSiteConfig(siteConfig);
+    }
+  }, [siteConfig]);
+
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      setLocalMembers(members);
+    }
+  }, [members]);
+
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      setLocalProjects(projects);
+    }
+  }, [projects]);
+
+  // Debounced update functions
+  const debouncedUpdateSiteConfig = useDebounce((config: any) => {
+    updateSiteConfig(config);
+    isEditingRef.current = false;
+  }, 1000);
+
+  const debouncedUpdateMember = useDebounce((id: string, updates: any) => {
+    contextUpdateMember(id, updates);
+    isEditingRef.current = false;
+  }, 1000);
+
+  const debouncedUpdateProject = useDebounce((id: string, updates: any) => {
+    contextUpdateProject(id, updates);
+    isEditingRef.current = false;
+  }, 1000);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -162,15 +220,17 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  // Site Settings change handler with immediate update
-  const handleSiteConfigChange = async (updates: any) => {
-    const updatedConfig = { ...siteConfig, ...updates };
-    await updateSiteConfig(updatedConfig);
+  // Site Settings change handler
+  const handleSiteConfigChange = (updates: any) => {
+    isEditingRef.current = true;
+    const updatedConfig = { ...localSiteConfig, ...updates };
+    setLocalSiteConfig(updatedConfig);
+    debouncedUpdateSiteConfig(updatedConfig);
   };
 
   // Contact/Social Management
   const addContactItem = () => {
-    const newContact = [...(siteConfig.contact || []), { 
+    const newContact = [...(localSiteConfig.contact || []), { 
       id: Date.now().toString(), 
       label: 'New Contact', 
       value: '', 
@@ -180,19 +240,22 @@ export const AdminDashboardPage = () => {
   };
 
   const removeContactItem = (id: string) => {
-    const newContact = siteConfig.contact.filter(item => item.id !== id);
+    const newContact = localSiteConfig.contact.filter(item => item.id !== id);
     handleSiteConfigChange({ contact: newContact });
   };
 
   const updateContactItem = (id: string, updates: any) => {
-    const newContact = siteConfig.contact.map(item => 
+    isEditingRef.current = true;
+    const newContact = localSiteConfig.contact.map(item => 
       item.id === id ? { ...item, ...updates } : item
     );
-    handleSiteConfigChange({ contact: newContact });
+    const updatedConfig = { ...localSiteConfig, contact: newContact };
+    setLocalSiteConfig(updatedConfig);
+    debouncedUpdateSiteConfig(updatedConfig);
   };
 
   const addSocialItem = () => {
-    const newSocial = [...(siteConfig.social || []), { 
+    const newSocial = [...(localSiteConfig.social || []), { 
       id: Date.now().toString(), 
       label: 'New Social', 
       url: '' 
@@ -201,24 +264,27 @@ export const AdminDashboardPage = () => {
   };
 
   const removeSocialItem = (id: string) => {
-    const newSocial = siteConfig.social.filter(item => item.id !== id);
+    const newSocial = localSiteConfig.social.filter(item => item.id !== id);
     handleSiteConfigChange({ social: newSocial });
   };
 
   const updateSocialItem = (id: string, updates: any) => {
-    const newSocial = siteConfig.social.map(item => 
+    isEditingRef.current = true;
+    const newSocial = localSiteConfig.social.map(item => 
       item.id === id ? { ...item, ...updates } : item
     );
-    handleSiteConfigChange({ social: newSocial });
+    const updatedConfig = { ...localSiteConfig, social: newSocial };
+    setLocalSiteConfig(updatedConfig);
+    debouncedUpdateSiteConfig(updatedConfig);
   };
 
   const addWhatsApp = () => {
-    const hasWhatsApp = siteConfig.social?.some(s => s.label.toLowerCase().includes('whatsapp'));
+    const hasWhatsApp = localSiteConfig.social?.some(s => s.label.toLowerCase().includes('whatsapp'));
     if (hasWhatsApp) {
       alert('WhatsApp already exists!');
       return;
     }
-    const newSocial = [...(siteConfig.social || []), { 
+    const newSocial = [...(localSiteConfig.social || []), { 
       id: Date.now().toString(), 
       label: 'WhatsApp', 
       url: 'https://wa.me/YOUR_NUMBER' 
@@ -251,15 +317,44 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  const updateMember = async (id: string, field: string, value: any) => {
-    await contextUpdateMember(id, { [field]: value });
+  const updateMember = (id: string, field: string, value: any) => {
+    isEditingRef.current = true;
+    const updatedMembers = localMembers.map(m => 
+      m.id === id ? { ...m, [field]: value } : m
+    );
+    setLocalMembers(updatedMembers);
+    debouncedUpdateMember(id, { [field]: value });
   };
 
-  const updateMemberSocial = async (memberId: string, platform: string, value: string) => {
-    const member = members.find(m => m.id === memberId);
+  const updateMemberSocial = (memberId: string, platform: string, value: string) => {
+    isEditingRef.current = true;
+    const member = localMembers.find(m => m.id === memberId);
     if (!member) return;
     const newSocials = { ...(member.socials || {}), [platform]: value };
-    await updateMember(memberId, 'socials', newSocials);
+    
+    const updatedMembers = localMembers.map(m => 
+      m.id === memberId ? { ...m, socials: newSocials } : m
+    );
+    setLocalMembers(updatedMembers);
+    debouncedUpdateMember(memberId, { socials: newSocials });
+  };
+
+  const updateMemberProjects = (memberId: string, newProjects: any[]) => {
+    isEditingRef.current = true;
+    const updatedMembers = localMembers.map(m => 
+      m.id === memberId ? { ...m, projects: newProjects } : m
+    );
+    setLocalMembers(updatedMembers);
+    debouncedUpdateMember(memberId, { projects: newProjects });
+  };
+
+  const updateMemberGallery = (memberId: string, newGallery: string[]) => {
+    isEditingRef.current = true;
+    const updatedMembers = localMembers.map(m => 
+      m.id === memberId ? { ...m, gallery: newGallery } : m
+    );
+    setLocalMembers(updatedMembers);
+    debouncedUpdateMember(memberId, { gallery: newGallery });
   };
 
   // Company Project Actions
@@ -280,8 +375,13 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  const updateProject = async (id: string, field: string, value: any) => {
-    await contextUpdateProject(id, { [field]: value });
+  const updateProject = (id: string, field: string, value: any) => {
+    isEditingRef.current = true;
+    const updatedProjects = localProjects.map(p => 
+      p.firestoreId === id ? { ...p, [field]: value } : p
+    );
+    setLocalProjects(updatedProjects);
+    debouncedUpdateProject(id, { [field]: value });
   };
 
   return (
@@ -318,7 +418,7 @@ export const AdminDashboardPage = () => {
               <label>Site Title</label>
               <input 
                 type="text" 
-                value={siteConfig.title} 
+                value={localSiteConfig.title} 
                 onChange={(e) => handleSiteConfigChange({ title: e.target.value })} 
                 className="glass-input" 
               />
@@ -326,7 +426,7 @@ export const AdminDashboardPage = () => {
             <div className="form-group">
               <label>Mission</label>
               <textarea 
-                value={siteConfig.mission} 
+                value={localSiteConfig.mission} 
                 onChange={(e) => handleSiteConfigChange({ mission: e.target.value })} 
                 className="glass-input" 
                 rows={2} 
@@ -334,7 +434,7 @@ export const AdminDashboardPage = () => {
             </div>
             <ImageUploadInput 
               label="Main Site Logo" 
-              value={siteConfig.logo} 
+              value={localSiteConfig.logo} 
               onUpdate={(url) => handleSiteConfigChange({ logo: url })} 
               id="site-logo" 
             />
@@ -344,8 +444,8 @@ export const AdminDashboardPage = () => {
               <label>Splash Title</label>
               <input
                 type="text"
-                value={siteConfig.splash?.title || ''}
-                onChange={(e) => handleSiteConfigChange({ splash: { ...siteConfig.splash, title: e.target.value } })}
+                value={localSiteConfig.splash?.title || ''}
+                onChange={(e) => handleSiteConfigChange({ splash: { ...localSiteConfig.splash, title: e.target.value } })}
                 className="glass-input"
                 placeholder="Enter splash title"
               />
@@ -354,22 +454,22 @@ export const AdminDashboardPage = () => {
               <label>Splash Tagline</label>
               <input
                 type="text"
-                value={siteConfig.splash?.tagline || ''}
-                onChange={(e) => handleSiteConfigChange({ splash: { ...siteConfig.splash, tagline: e.target.value } })}
+                value={localSiteConfig.splash?.tagline || ''}
+                onChange={(e) => handleSiteConfigChange({ splash: { ...localSiteConfig.splash, tagline: e.target.value } })}
                 className="glass-input"
                 placeholder="Enter splash tagline"
               />
             </div>
             <ImageUploadInput 
               label="Splash Image URL" 
-              value={siteConfig.splash?.image || ''} 
-              onUpdate={(url) => handleSiteConfigChange({ splash: { ...siteConfig.splash, image: url } })} 
+              value={localSiteConfig.splash?.image || ''} 
+              onUpdate={(url) => handleSiteConfigChange({ splash: { ...localSiteConfig.splash, image: url } })} 
               id="splash-image" 
             />
 
             <h3 className="subsection-title mt-8">Contact Information</h3>
             <div className="nested-list mb-4">
-              {Array.isArray(siteConfig.contact) && siteConfig.contact.map((item) => (
+              {Array.isArray(localSiteConfig.contact) && localSiteConfig.contact.map((item) => (
                 <div key={item.id} className="nested-item glass-panel !grid-cols-1 md:!grid-cols-[1fr_2fr_1fr_auto] gap-4">
                   <input 
                     type="text" 
@@ -408,7 +508,7 @@ export const AdminDashboardPage = () => {
               </button>
             </h3>
             <div className="nested-list">
-              {Array.isArray(siteConfig.social) && siteConfig.social.map((item) => (
+              {Array.isArray(localSiteConfig.social) && localSiteConfig.social.map((item) => (
                 <div key={item.id} className="nested-item glass-panel !grid-cols-1 md:!grid-cols-[1fr_2fr_auto] gap-4">
                   <input 
                     type="text" 
@@ -440,7 +540,7 @@ export const AdminDashboardPage = () => {
               <button onClick={addProject} className="add-button glass-button"><FiPlus /> New Project</button>
             </div>
             <div className="members-list">
-              {projects.map((project: any, index) => (
+              {localProjects.map((project: any, index) => (
                 <div key={project.firestoreId || index} className="member-edit-card glass-panel">
                   <div className="member-edit-header">
                     <label className="cursor-pointer hover:opacity-80 transition-opacity" title="Click to change image">
@@ -499,7 +599,7 @@ export const AdminDashboardPage = () => {
               <button onClick={addTeamMember} className="add-button glass-button"><FiPlus /> Add Member</button>
             </div>
             <div className="members-list">
-              {members.map((member, index) => (
+              {localMembers.map((member, index) => (
                 <div key={member.id} className="member-edit-card glass-panel">
                   <div className="member-edit-header">
                     <label className="cursor-pointer hover:opacity-80 transition-opacity" title="Click to change avatar">
@@ -594,13 +694,13 @@ export const AdminDashboardPage = () => {
                                 <input type="text" value={p.title} placeholder="e.g. Mobile App" onChange={(e) => {
                                   const newProjects = [...member.projects];
                                   newProjects[pIdx].title = e.target.value;
-                                  updateMember(member.id, 'projects', newProjects);
+                                  updateMemberProjects(member.id, newProjects);
                                 }} className="glass-input !py-2" />
                               </div>
                               <button 
                                 className="delete-button flex-shrink-0 mt-5" 
                                 title="Remove Project"
-                                onClick={() => updateMember(member.id, 'projects', member.projects.filter((_, i) => i !== pIdx))}
+                                onClick={() => updateMemberProjects(member.id, member.projects.filter((_, i) => i !== pIdx))}
                               >
                                 <FiX />
                               </button>
@@ -614,7 +714,7 @@ export const AdminDashboardPage = () => {
                                 onChange={(e) => {
                                   const newProjects = [...member.projects];
                                   newProjects[pIdx].description = e.target.value;
-                                  updateMember(member.id, 'projects', newProjects);
+                                  updateMemberProjects(member.id, newProjects);
                                 }} 
                                 className="glass-input"
                                 rows={2}
@@ -629,14 +729,14 @@ export const AdminDashboardPage = () => {
                                 onUpdate={(url) => {
                                   const newProjects = [...member.projects];
                                   newProjects[pIdx].image = url;
-                                  updateMember(member.id, 'projects', newProjects);
+                                  updateMemberProjects(member.id, newProjects);
                                 }} 
                                 id={`member-${index}-project-${pIdx}`} 
                               />
                             </div>
                           </div>
                         ))}
-                        <button className="glass-button w-full mt-2" onClick={() => updateMember(member.id, 'projects', [...(member.projects || []), { title: 'New Project', description: '', image: '', link: '' }])}><FiPlus /> Add Project</button>
+                        <button className="glass-button w-full mt-2" onClick={() => updateMemberProjects(member.id, [...(member.projects || []), { title: 'New Project', description: '', image: '', link: '' }])}><FiPlus /> Add Project</button>
                       </div>
 
                       <h4>Gallery Images</h4>
@@ -644,7 +744,7 @@ export const AdminDashboardPage = () => {
                         {member.gallery?.map((img, gIdx) => (
                           <div key={gIdx} className="gallery-edit-item">
                             <img src={img} />
-                            <button className="remove-gallery-img" onClick={() => updateMember(member.id, 'gallery', member.gallery.filter((_, i) => i !== gIdx))}><FiX /></button>
+                            <button className="remove-gallery-img" onClick={() => updateMemberGallery(member.id, member.gallery.filter((_, i) => i !== gIdx))}><FiX /></button>
                           </div>
                         ))}
                         <label className="gallery-add-btn glass-button">
@@ -657,7 +757,7 @@ export const AdminDashboardPage = () => {
                                   setCropState({ 
                                     src: reader.result as string, 
                                     callback: (url) => {
-                                      updateMember(member.id, 'gallery', [...(member.gallery || []), url]);
+                                      updateMemberGallery(member.id, [...(member.gallery || []), url]);
                                     }, 
                                     id: `gallery-${member.id}` 
                                   });
